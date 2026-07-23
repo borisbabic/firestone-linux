@@ -1,0 +1,63 @@
+description: Firestone Standalone Deck Tracker for "Hearthstone"
+game_slug: firestone
+gogslug: ''
+humblestorid:
+installer_slug: firestone-standalone-standard
+name: Firestone
+notes: Installer for Firestone Standalone
+runner: wine
+slug: firestone-standalone-standard
+steamid: null
+version: standard
+script:
+  files:
+  - setup:
+      filename: Firestone Standalone Setup.exe
+      url: "N/A:Select the setup file called Firestone Standalone Setup.exe"
+  game:
+    arch: win64
+    exe: drive_c/launch_script.bat
+    prefix: $GAMEDIR/
+  requires: battlenet-standard
+  system:
+    env:
+      DXVK_HUD: compiler
+      DXVK_STATE_CACHE_PATH: $GAMEDIR
+      STAGING_SHARED_MEMORY: 1
+      __GL_SHADER_DISK_CACHE: 1
+      __GL_SHADER_DISK_CACHE_PATH: $GAMEDIR
+      __GL_SHADER_DISK_CACHE_SKIP_CLEANUP: 1
+    exclude_processes: Agent.exe "Battle.net Helper.exe"
+  wine:
+    battleye: false
+    eac: false
+    fsr: false
+    version: wine-staging-11.2-x86_64
+    overrides:
+      locationapi: d
+  installer:
+  - copy:
+      src: setup
+      dst: $GAMEDIR/drive_c/
+
+  - task:
+      arch: win64
+      description: 'Installing Firestone Standalone
+
+        ---------------------------------
+
+        - Select the option to install it for Anyone who uses this computer (all users)
+
+        - Uncheck Run Firestone Standalone before clicking finish
+
+        '
+      name: wineexec
+      executable: "$GAMEDIR/drive_c/Firestone Standalone Setup.exe"
+      prefix: $GAMEDIR/
+
+  - write_file:
+      file: $GAMEDIR/drive_c/launch_script.bat
+      content: |
+        start "firestone" "C:\Program Files\Firestone Standalone\Firestone Standalone.exe"
+        REM start "hearthstone" "C:\Program Files (x86)\Hearthstone\Hearthstone Beta Launcher.exe" --exec="launch WTCG"
+        start "battlenet" "C:\Program Files (x86)\Battle.net\Battle.net Launcher.exe"

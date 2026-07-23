@@ -5,7 +5,7 @@ set -euo pipefail
 DEFAULT_RELATIVE_PATH="drive_c/users/steamuser/AppData/Roaming/Firestone Standalone/data/user.firestone-standalone.json"
 
 show_help() {
-    cat << EOF
+  cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
 
 Parses a Firestone auth URL and saves the output JSON into a Wine prefix.
@@ -27,56 +27,56 @@ RELATIVE_FILE=""
 INTERACTIVE=false
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -u|--url)
-            URL="$2"
-            shift 2
-            ;;
-        -p|--prefix)
-            WINE_PREFIX="$2"
-            shift 2
-            ;;
-        -f|--file)
-            RELATIVE_FILE="$2"
-            shift 2
-            ;;
-        -i|--interactive)
-            INTERACTIVE=true
-            shift
-            ;;
-        -h|--help)
-            show_help
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1" >&2
-            show_help
-            exit 1
-            ;;
-    esac
+  case "$1" in
+  -u | --url)
+    URL="$2"
+    shift 2
+    ;;
+  -p | --prefix)
+    WINE_PREFIX="$2"
+    shift 2
+    ;;
+  -f | --file)
+    RELATIVE_FILE="$2"
+    shift 2
+    ;;
+  -i | --interactive)
+    INTERACTIVE=true
+    shift
+    ;;
+  -h | --help)
+    show_help
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    show_help
+    exit 1
+    ;;
+  esac
 done
 
 # Fallback to interactive mode if required arguments are missing
 if [[ -z "$URL" || -z "$WINE_PREFIX" ]]; then
-    INTERACTIVE=true
+  INTERACTIVE=true
 fi
 
 if [[ "$INTERACTIVE" == true ]]; then
-    echo "=== Firestone Auth Configurator ==="
-    echo ""
+  echo "=== Firestone Auth Configurator ==="
+  echo ""
 
-    if [[ -z "$URL" ]]; then
-        read -rp "Enter Firestone Auth URL: " URL
-    fi
+  if [[ -z "$URL" ]]; then
+    read -rp "Enter Firestone Auth URL: " URL
+  fi
 
-    if [[ -z "$WINE_PREFIX" ]]; then
-        read -rp "Enter Wine Prefix Directory (e.g., ~/.wine or ~/.local/share/bottles/gradles): " WINE_PREFIX
-    fi
+  if [[ -z "$WINE_PREFIX" ]]; then
+    read -rp "Enter Wine Prefix Directory (e.g., ~/.wine or ~/Games/battlenet)" WINE_PREFIX
+  fi
 
-    if [[ -z "$RELATIVE_FILE" ]]; then
-        read -rp "Enter relative file path inside prefix [Default: $DEFAULT_RELATIVE_PATH]: " INPUT_FILE
-        RELATIVE_FILE="${INPUT_FILE:-$DEFAULT_RELATIVE_PATH}"
-    fi
+  if [[ -z "$RELATIVE_FILE" ]]; then
+    read -rp "Enter relative file path inside prefix - just hit enter [Default: $DEFAULT_RELATIVE_PATH]: " INPUT_FILE
+    RELATIVE_FILE="${INPUT_FILE:-$DEFAULT_RELATIVE_PATH}"
+  fi
 fi
 
 # Apply default file path if still not set
@@ -87,8 +87,8 @@ WINE_PREFIX="${WINE_PREFIX/#\~/$HOME}"
 
 # Validate Wine prefix directory
 if [[ ! -d "$WINE_PREFIX" ]]; then
-    echo "Error: Wine prefix directory '$WINE_PREFIX' does not exist." >&2
-    exit 1
+  echo "Error: Wine prefix directory '$WINE_PREFIX' does not exist." >&2
+  exit 1
 fi
 
 FULL_OUTPUT_PATH="$WINE_PREFIX/$RELATIVE_FILE"
@@ -97,8 +97,8 @@ FULL_OUTPUT_PATH="$WINE_PREFIX/$RELATIVE_FILE"
 QUERY_STRING="${URL#*\?}"
 
 get_param() {
-    local key="$1"
-    echo "$QUERY_STRING" | grep -oP "(?<=[?&]|^)${key}=\K[^&]*" || true
+  local key="$1"
+  echo "$QUERY_STRING" | grep -oP "(?<=[?&]|^)${key}=\K[^&]*" || true
 }
 
 # Extract values from URL
@@ -132,7 +132,7 @@ jq -n \
     avatar: $avatar,
     provider: $provider,
     internalUserName: $internalUserName
-  }' > "$FULL_OUTPUT_PATH"
+  }' >"$FULL_OUTPUT_PATH"
 
 echo "Successfully wrote configuration to:"
 echo "  $FULL_OUTPUT_PATH"
