@@ -2,14 +2,14 @@
 A repo to help get Firestone standalone setup on linux. You need Firestone premium for Firestone Standalone
 
 ## TLDR Instructions
-1. Download the setup exe as `Firestone Standalone Setup.exe`
+1. Download the setup exe as `Firestone Standalone.exe`
 2. Install the firestone_linux.yaml in lutris
 3. [Login](https://www.firestoneapp.com/login) and copy the link on the success Screen
 4. Run the script in this repo (see [below](#script-readme))
 
 ### Download setup exe
 See the first message in the #app-status channel in the firestone discord for the link. You need premium for this.
-Rename it to `Firestone Standalone Setup.exe`, removing the version from the file name
+Rename it to `Firestone Standalone.exe`, removing the version from the file name
 
 ### Install the firestone_linux.yaml
 Download the file or clone/download the repo, then in Lutris click the + and select `Install from a local install script`, select the file, and when asked select the renamed executable
@@ -26,6 +26,13 @@ When you login it probably won't redirect to Firestone (it didn't for me). Assum
 If you're not sure which prefix you installed it to then see `Wine prefix` in Lutris by right clicking Firestone -> Configure -> Game options
 
 ## Troubleshooting
+### Can't Update
+If you're getting an issue with updating that the installer is detecting that firestone is running when it's not then download the new version manually, rename the exe to `Firestone Standalone.exe` then in Lutris click on the Firestone install and select `Run EXE inside Wine prefix` and install it for all users in the installer
+
+![Screenshot showing the Run EXE option in the menu next to the wine icon](https://forums.lutris.net/uploads/default/original/2X/7/7e40460edeaa0aa3d39c9b7810bd2c763f83d48a.png)
+
+Naming it `Firestone Standalone.exe` makes the installer skip the already running check, since NSIS skips it when the installer exe name is the same as the name of the executable that's being installed
+
 ### Icon not in main systray in Wayland
 If they're opening in another window or just missing try installing/starting the `xembed-sni-proxy`.
 

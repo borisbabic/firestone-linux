@@ -12,8 +12,8 @@ version: standard
 script:
   files:
   - setup:
-      filename: Firestone Standalone Setup.exe
-      url: "N/A:Select the setup file called Firestone Standalone Setup.exe"
+      filename: Firestone Standalone.exe
+      url: "N/A:Select the setup file called Firestone Standalone.exe"
   game:
     arch: win64
     exe: drive_c/launch_script.bat
