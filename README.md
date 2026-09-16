@@ -31,7 +31,7 @@ If you're getting an issue with updating that the installer is detecting that fi
 
 ![Screenshot showing the Run EXE option in the menu next to the wine icon](https://forums.lutris.net/uploads/default/original/2X/7/7e40460edeaa0aa3d39c9b7810bd2c763f83d48a.png)
 
-Naming it `Firestone Standalone.exe` makes the installer skip the already running check, since NSIS skips it when the installer exe name is the same as the name of the executable that's being installed
+Naming it `Firestone Standalone.exe` makes the installer skip the already running check, since NSIS skips it when the installer exe name is the same as the name of the executable that's being installed. If this doesn't work then remove/rename then the `Firestone Standalone` that is in the `drive_c/Program Files`  directory in your prefix and install Firestone from scratch (this won't affect your auth)
 
 ### Icon not in main systray in Wayland
 If they're opening in another window or just missing try installing/starting the `xembed-sni-proxy`.
