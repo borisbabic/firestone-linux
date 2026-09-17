@@ -52,7 +52,7 @@ script:
 
         '
       name: wineexec
-      executable: "$GAMEDIR/drive_c/Firestone Standalone Setup.exe"
+      executable: "$GAMEDIR/drive_c/Firestone Standalone.exe"
       prefix: $GAMEDIR/
 
   - write_file:
