@@ -1,5 +1,5 @@
 # Intro
-A repo to help get Firestone standalone setup on linux. You need Firestone premium for Firestone Standalone
+A repo to help get Firestone standalone setup on linux. 
 
 ## TLDR Instructions
 1. Download the setup exe as `Firestone Standalone.exe`
@@ -8,7 +8,8 @@ A repo to help get Firestone standalone setup on linux. You need Firestone premi
 4. Run the script in this repo (see [below](#script-readme))
 
 ### Download setup exe
-See the first message in the #app-status channel in the firestone discord for the link. You need premium for this.
+Join the [Firestone Discord](https://discord.com/invite/mZQvUU4) and see the get-roles channel to get the beta tester role.
+See the first message in the #app-status channel in the firestone discord for the download link.
 Rename it to `Firestone Standalone.exe`, removing the version from the file name
 
 ### Install the firestone_linux.yaml
