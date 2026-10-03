@@ -32,7 +32,6 @@ script:
     battleye: false
     eac: false
     fsr: false
-    version: wine-staging-11.2-x86_64
     overrides:
       locationapi: d
   installer:
@@ -61,3 +60,253 @@ script:
         start "firestone" "C:\Program Files\Firestone Standalone\Firestone Standalone.exe"
         REM start "hearthstone" "C:\Program Files (x86)\Hearthstone\Hearthstone Beta Launcher.exe" --exec="launch WTCG"
         start "battlenet" "C:\Program Files (x86)\Battle.net\Battle.net Launcher.exe"
+
+  - write_file:
+      file: $GAMEDIR/firestoneapp-handler.sh
+      content: |
+        #!/usr/bin/env bash
+        # Opens firestoneapp:// links in Firestone Standalone. Uses the Wine prefix this
+        # script lives in and whatever Wine version Lutris currently has configured for
+        # it, so changing the Wine version in Lutris also changes it here.
+        # NOTE: Lutris substitutes its own variables (GAMEDIR, HOME, USER, INPUT, ...)
+        # when writing this file, so only use lowercase variable names here.
+        exe='C:\Program Files\Firestone Standalone\Firestone Standalone.exe'
+        prefix="$(dirname "$(readlink -f "$0")")"
+        home_dir=~
+        lutris_dirs=(
+          "${XDG_DATA_HOME:-$home_dir/.local/share}/lutris"
+          "${XDG_CONFIG_HOME:-$home_dir/.config}/lutris"
+          "$home_dir/.var/app/net.lutris.Lutris/data/lutris"
+          "$home_dir/.var/app/net.lutris.Lutris/config/lutris"
+        )
+        exec >"$prefix/firestoneapp-handler.log" 2>&1
+        # Don't log the link itself, it contains the login token
+        echo "[$(date '+%F %T')] opening a firestoneapp:// link"
+
+        # Any web page can open firestoneapp:// links, so only pass on exactly one link
+        # and nothing that could split it into extra arguments for Firestone (Electron
+        # deep link argument injection, e.g. a quote followed by --gpu-launcher=...).
+        url="${1:-}"
+        if [ "$#" -ne 1 ] || [[ "${url,,}" != firestoneapp://* ]] ||
+          [[ "$url" == *[[:space:][:cntrl:]\"\\]* ]]; then
+          echo "Refusing to open: expected a single firestoneapp:// link without spaces, quotes or backslashes"
+          exit 1
+        fi
+
+        # yaml_get FILE SECTION KEY: print a value from a Lutris config (e.g. wine version)
+        yaml_get() {
+          [ -f "$1" ] || return 0
+          awk -v section="$2" -v key="$3" '
+            /^[^ ]/ { in_section = ($0 == section ":"); next }
+            in_section && index($0, "  " key ":") == 1 {
+              value = substr($0, length(key) + 4)
+              gsub(/^[ \t]+|[ \t]+$/, "", value); gsub(/^["\047]|["\047]$/, "", value)
+              print value; exit
+            }' "$1"
+        }
+
+        # yaml_map FILE SECTION KEY: print name=value lines of a nested map (e.g. wine overrides)
+        yaml_map() {
+          [ -f "$1" ] || return 0
+          awk -v section="$2" -v key="$3" '
+            /^[^ ]/ { in_section = ($0 == section ":"); in_map = 0; next }
+            in_section && /^  [^ ]/ { in_map = ($0 == "  " key ":"); next }
+            in_map && /^    [^ ]/ {
+              line = substr($0, 5); i = index(line, ":")
+              name = substr(line, 1, i - 1); value = substr(line, i + 1)
+              gsub(/^[ \t]+|[ \t]+$/, "", value); gsub(/^["\047]|["\047]$/, "", value)
+              gsub(/^["\047]|["\047]$/, "", name)
+              if (value == "disabled") value = ""
+              print name "=" value
+            }' "$1"
+        }
+
+        # Find the Lutris game config using this prefix. Firestone shares its prefix with
+        # Battle.net, so prefer the config that launches launch_script.bat.
+        game_config=""
+        runner_config=""
+        for dir in "${lutris_dirs[@]}"; do
+          [ -z "$runner_config" ] && [ -f "$dir/runners/wine.yml" ] && runner_config="$dir/runners/wine.yml"
+          for config in "$dir"/games/*.yml; do
+            config_prefix="$(yaml_get "$config" game prefix)"
+            [ -n "$config_prefix" ] && [ "$(readlink -f "$config_prefix")" = "$prefix" ] || continue
+            if [[ "$(yaml_get "$config" game exe)" == *launch_script.bat ]]; then
+              game_config="$config"
+            elif [ -z "$game_config" ]; then
+              game_config="$config"
+            fi
+          done
+        done
+        echo "game config: ${game_config:-not found}, runner config: ${runner_config:-not found}"
+
+        # wine_option KEY: the game's wine option, falling back to the wine runner default
+        wine_option() {
+          local value
+          value="$(yaml_get "$game_config" wine "$1")"
+          [ -n "$value" ] || value="$(yaml_get "$runner_config" wine "$1")"
+          echo "$value"
+        }
+
+        wine_version="$(wine_option version)"
+        version_dir=""
+        for dir in "${lutris_dirs[@]}"; do
+          if [ -n "$wine_version" ] && [ -d "$dir/runners/wine/$wine_version" ]; then
+            version_dir="$dir/runners/wine/$wine_version"
+            break
+          fi
+        done
+
+        wine_cmd=()
+        if [ -n "$version_dir" ] && [ -f "$version_dir/proton" ]; then
+          # Proton build: Lutris runs these through umu, do the same when it's available
+          umu="$(command -v umu-run)"
+          for dir in "${lutris_dirs[@]}"; do
+            [ -z "$umu" ] && [ -x "$dir/runtime/umu/umu-run" ] && umu="$dir/runtime/umu/umu-run"
+          done
+          if [ -n "$umu" ]; then
+            export PROTONPATH="$version_dir" GAMEID="${GAMEID:-umu-default}"
+            wine_cmd=("$umu")
+          else
+            wine_cmd=("$version_dir/files/bin/wine")
+          fi
+        elif [ -n "$version_dir" ]; then
+          wine_cmd=("$version_dir/bin/wine")
+        elif [ "$wine_version" = custom ]; then
+          wine_cmd=("$(wine_option custom_wine_path)")
+        else
+          [ -n "$wine_version" ] && [ "$wine_version" != system ] &&
+            echo "Wine version '$wine_version' not found, falling back to the system wine"
+          wine_cmd=("$(command -v wine)")
+        fi
+        echo "wine version: ${wine_version:-unset}, using: ${wine_cmd[*]}"
+        if [ ! -x "${wine_cmd[0]}" ]; then
+          echo "No usable wine found"
+          command -v notify-send >/dev/null &&
+            notify-send "Firestone link handler" "No usable Wine found, see $prefix/firestoneapp-handler.log"
+          exit 1
+        fi
+
+        arch="$(yaml_get "$game_config" game arch)"
+        overrides="winemenubuilder="
+        while IFS= read -r override; do overrides="$overrides;$override"; done < <(yaml_map "$game_config" wine overrides)
+        export WINEPREFIX="$prefix" WINEARCH="${arch:-win64}" WINEDEBUG=-all WINEDLLOVERRIDES="$overrides"
+        # These must match the running Firestone instance's wineserver, so mirror Lutris
+        if [ "$(wine_option esync)" = false ]; then export WINEESYNC=0 PROTON_NO_ESYNC=1; else export WINEESYNC=1; fi
+        if [ "$(wine_option fsync)" = false ]; then export WINEFSYNC=0 PROTON_NO_FSYNC=1; else export WINEFSYNC=1; fi
+
+        exec "${wine_cmd[@]}" "$exe" "$url"
+
+  - chmodx: $GAMEDIR/firestoneapp-handler.sh
+
+  - write_file:
+      file: $GAMEDIR/firestoneapp-handler.desktop
+      content: |
+        [Desktop Entry]
+        Type=Application
+        Name=Firestone (firestoneapp:// links)
+        Comment=Opens firestoneapp:// links in Firestone Standalone running in Wine
+        Exec="$GAMEDIR/firestoneapp-handler.sh" %u
+        Terminal=false
+        NoDisplay=true
+        MimeType=x-scheme-handler/firestoneapp;
+
+  - write_file:
+      file: $GAMEDIR/register-firestoneapp-handler.sh
+      content: |
+        #!/usr/bin/env bash
+        # Registers firestoneapp-handler.desktop as the handler for firestoneapp:// links.
+        # Usage: register-firestoneapp-handler.sh [register|later]
+        # "later" only prints (and tries to show) how to do it manually.
+        # NOTE: Lutris substitutes its own variables (GAMEDIR, HOME, USER, INPUT, ...)
+        # when writing this file, so only use lowercase variable names here.
+        dir="$(dirname "$(readlink -f "$0")")"
+        home_dir=~
+        apps_dir="${XDG_DATA_HOME:-$home_dir/.local/share}/applications"
+        mimeapps="${XDG_CONFIG_HOME:-$home_dir/.config}/mimeapps.list"
+        desktop_name=firestoneapp-handler.desktop
+        mime_type=x-scheme-handler/firestoneapp
+
+        # The path goes into the .desktop Exec line (and the messages below), where
+        # quotes, backslashes, $, ` and % have special meanings, so refuse them
+        # rather than risk a broken or injected command.
+        if [[ "$dir" == *[[:cntrl:]\"\\\$\`%]* ]]; then
+          echo "The game folder path contains unsupported characters (\" \\ \$ \` % or control characters): $dir"
+          exit 1
+        fi
+
+        if [ "${1:-register}" != register ]; then
+          message="Firestone was not registered as the handler for firestoneapp:// links.
+
+        To do it later, run:
+          \"$dir/register-firestoneapp-handler.sh\"
+
+        Or manually:
+          mkdir -p \"$apps_dir\"
+          cp \"$dir/$desktop_name\" \"$apps_dir/\"
+          xdg-mime default $desktop_name $mime_type
+
+        See the README for details."
+          echo "$message"
+          if command -v zenity >/dev/null; then
+            zenity --info --no-markup --title="Firestone link handler" --text="$message"
+          elif command -v kdialog >/dev/null; then
+            kdialog --title "Firestone link handler" --msgbox "$message"
+          elif command -v notify-send >/dev/null; then
+            notify-send "Firestone link handler" "Not registered. To do it later run $dir/register-firestoneapp-handler.sh"
+          fi
+          exit 0
+        fi
+
+        mkdir -p "$apps_dir" || exit 1
+        # Point Exec at this folder, in case the prefix was moved since installing
+        while IFS= read -r line || [ -n "$line" ]; do
+          if [[ "$line" == Exec=* ]]; then
+            printf 'Exec="%s/firestoneapp-handler.sh" %%u\n' "$dir"
+          else
+            printf '%s\n' "$line"
+          fi
+        done <"$dir/$desktop_name" >"$apps_dir/$desktop_name" || exit 1
+        echo "Installed $apps_dir/$desktop_name"
+
+        mkdir -p "$(dirname "$mimeapps")" || exit 1
+        if command -v xdg-mime >/dev/null; then
+          xdg-mime default "$desktop_name" "$mime_type" || exit 1
+        else
+          # No xdg-utils, set the default in mimeapps.list directly
+          touch "$mimeapps" || exit 1
+          tmp="$(mktemp "$mimeapps.XXXXXX")" || exit 1
+          awk -v entry="$mime_type=$desktop_name" -v prefix="$mime_type=" '
+            /^\[/ {
+              if (in_defaults && !done) { print entry; done = 1 }
+              in_defaults = ($0 == "[Default Applications]")
+            }
+            in_defaults && index($0, prefix) == 1 { next }
+            { print }
+            END {
+              if (!done) {
+                if (!in_defaults) print "[Default Applications]"
+                print entry
+              }
+            }' "$mimeapps" >"$tmp" && mv "$tmp" "$mimeapps" || { rm -f "$tmp"; exit 1; }
+        fi
+        command -v update-desktop-database >/dev/null && update-desktop-database "$apps_dir"
+        echo "Registered $desktop_name as the default handler for $mime_type"
+
+  - chmodx: $GAMEDIR/register-firestoneapp-handler.sh
+
+  - input_menu:
+      description: 'Register Firestone as the handler for firestoneapp:// links?
+
+        This lets the "open Firestone" link on the Firestone login page log you in directly.
+        You can also do it later by running register-firestoneapp-handler.sh from the
+        game folder (right click Firestone -> Browse files), see the README for details.
+        '
+      id: REGISTER_HANDLER
+      options:
+      - register: Yes, register it now
+      - later: No, I'll do it later
+      preselect: register
+
+  - execute:
+      file: $GAMEDIR/register-firestoneapp-handler.sh
+      args: $INPUT_REGISTER_HANDLER

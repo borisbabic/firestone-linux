@@ -4,6 +4,9 @@ A repo to help get Firestone standalone setup on linux.
 ## TLDR Instructions
 1. Download the setup exe as `Firestone Standalone.exe`
 2. Install the firestone_linux.yaml in lutris
+If you've registered the firestoneapp:// handler:
+3. [Login](https://www.firestoneapp.com/login)
+If you haven't:
 3. [Login](https://www.firestoneapp.com/login) and copy the link on the success Screen
 4. Run the script in this repo (see [below](#script-readme))
 
@@ -19,14 +22,48 @@ Download the file or clone/download the repo, then in Lutris click the + and sel
 - When prompted select Anyone who uses this computer (all users)
 - Uncheck Run Firestone Standalone before clicking finish
 
+At the end the installer asks whether to register Firestone as the handler for `firestoneapp://` links. If you say yes, the login link opens Firestone directly and you can skip the script. If you choose to do it later see [Registering the firestoneapp:// link handler](#registering-the-firestoneapp-link-handler).
+
 ### Login and run script
 Go to https://www.firestoneapp.com/login, you can also open this url by running firestone then right clicking in the systray.
 
-When you login it probably won't redirect to Firestone (it didn't for me). Assuming it didn't, then you need to copy the link `click here to open firestone`, it'll start with `firestoneapp://`, then run the script (see [below](#script-readme))
+If you haven't registered the link handler, you will also need to run the scrip after logging in if it doesn't redirect you
+
+ Assuming it didn't redirect to firestone for you, then you need to copy the link `click here to open firestone`, it'll start with `firestoneapp://`, then run the script (see [below](#script-readme))
 
 If you're not sure which prefix you installed it to then see `Wine prefix` in Lutris by right clicking Firestone -> Configure -> Game options
 
+### Registering the firestoneapp:// link handler manually
+
+If you chose to do it later, run (replace the path with your prefix):
+```bash
+~/Games/firestone/register-firestoneapp-handler.sh
+```
+
+Or do the same manually:
+```bash
+mkdir -p ~/.local/share/applications
+cp ~/Games/firestone/firestoneapp-handler.desktop ~/.local/share/applications/
+xdg-mime default firestoneapp-handler.desktop x-scheme-handler/firestoneapp
+# optional, only some desktops need it
+update-desktop-database ~/.local/share/applications
+```
+
+Check it worked with:
+```bash
+xdg-mime query default x-scheme-handler/firestoneapp   # should print firestoneapp-handler.desktop
+xdg-open 'firestoneapp://test'                         # should start Firestone
+```
+
+To remove it, delete `~/.local/share/applications/firestoneapp-handler.desktop` and the `x-scheme-handler/firestoneapp` line in `~/.config/mimeapps.list`.
+
+Notes:
+- Start Firestone from Lutris before clicking the login link. The handler starts Firestone if it isn't running, but without the rest of the Lutris launch environment.
+- If you move the prefix, run `register-firestoneapp-handler.sh` from the new location again, since the `.desktop` entry has the script's path in it.
+
 ## Troubleshooting
+### Clicking log in doesn't do anything
+You may need to manually open the link, it's https://www.firestoneapp.com/login
 ### Can't Update
 If you're getting an issue with updating that the installer is detecting that firestone is running when it's not then download the new version manually, rename the exe to `Firestone Standalone.exe` then in Lutris click on the Firestone install and select `Run EXE inside Wine prefix` and install it for all users in the installer
 
